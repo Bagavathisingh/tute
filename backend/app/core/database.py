@@ -1,10 +1,10 @@
 import os
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from dotenv import load_dotenv
+from fastapi import HTTPException
+import certifi
 
 load_dotenv()
-
-import certifi
 
 # Accept both MONGODB_URI (standard Atlas naming) and MONGO_URI
 MONGODB_URI = (
@@ -48,4 +48,9 @@ def get_database() -> AsyncIOMotorDatabase:
     """Dependency injector for routes."""
     if db_manager.db is None and db_manager.client is not None:
         db_manager.db = db_manager.client[DATABASE_NAME]
+    if db_manager.db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Database connection is currently unavailable. Please verify MONGODB_URI."
+        )
     return db_manager.db

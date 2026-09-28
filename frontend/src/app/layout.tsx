@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: 'v0 App',
   description: 'Created with v0',
   generator: 'v0.app',
-  icons: {
+  icons:{
     icon: [
       {
         url: '/assets/images/icon-light-32x32.png',

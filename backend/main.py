@@ -1,13 +1,12 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.core.database import connect_to_mongo, close_mongo_connection, get_database
-from backend.app.core.seed import seed_initial_data
-from backend.app.routers import students, standards, timetables, auth, exams, tests
+from app.core.database import connect_to_mongo, close_mongo_connection, get_database
+from app.core.seed import seed_initial_data
+from app.routers import students, standards, timetables, auth, exams, tests
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Connect to MongoDB Atlas & Seed Initial Data
     try:
         await connect_to_mongo()
         db = get_database()
@@ -19,7 +18,6 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    # Shutdown: Cleanly disconnect
     await close_mongo_connection()
 
 app = FastAPI(
@@ -29,7 +27,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS for frontend clients
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -38,7 +35,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include All Feature Routers
 app.include_router(auth.router)
 app.include_router(students.router)
 app.include_router(standards.router)
