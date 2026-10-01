@@ -449,7 +449,7 @@ body {
 /* Dashboard Wrapper (Sidebar Layout) */
 .dashboard-container {
     display: grid;
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: 280px minmax(0, 1fr);
     gap: 2.2rem;
     margin-top: 1rem;
 }
@@ -516,6 +516,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 2.2rem;
+    min-width: 0;
 }
 
 /* Statistic Summary Cards */
@@ -700,10 +701,40 @@ body {
 /* Tables */
 .table-responsive {
     width: 100%;
+    max-width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-card);
     background: var(--bg-card);
+}
+
+/* Fees Management Table Responsive Alignment */
+#fees-management-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#fees-management-table th,
+#fees-management-table td {
+    padding: 0.85rem 1rem;
+    white-space: nowrap;
+    text-align: center;
+}
+
+#fees-management-table th:first-child,
+#fees-management-table td:first-child {
+    text-align: left;
+    padding-left: 1.2rem;
+}
+
+#fees-management-table tbody tr {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+#fees-management-table tbody tr:hover {
+    background: var(--primary-light);
 }
 
 table {

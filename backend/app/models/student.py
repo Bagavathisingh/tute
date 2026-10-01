@@ -60,6 +60,8 @@ class StudentBase(BaseModel):
     feesAmount: float = 25000.0
     feesPaid: float = 0.0
     advanceFee: str = "Not Paid"  # "Paid" | "Not Paid"
+    advanceFeeDate: Optional[str] = ""
+    monthlyFeeDates: Optional[Dict[str, str]] = Field(default_factory=dict)
     monthlyFees: Dict[str, str] = Field(default_factory=lambda: {
         m: "Not Paid" for m in ["june", "july", "august", "september", "october", "november", "december", "january", "february", "march", "april", "may"]
     })
@@ -102,7 +104,9 @@ class StudentUpdate(BaseModel):
     feesAmount: Optional[float] = None
     feesPaid: Optional[float] = None
     advanceFee: Optional[str] = None
+    advanceFeeDate: Optional[str] = None
     monthlyFees: Optional[Dict[str, str]] = None
+    monthlyFeeDates: Optional[Dict[str, str]] = None
     performanceComment: Optional[str] = None
     parent: Optional[ParentDetails] = None
 
@@ -146,7 +150,10 @@ class FeesUpdate(BaseModel):
     feesStatus: Optional[str] = None  # "Paid" | "Pending" | "Partially Paid"
     feesAmount: Optional[float] = None
     feesPaid: Optional[float] = None
-    advanceFee: Optional[str] = None  # "Paid" | "Not Paid"
+    advanceFee: Optional[str] = None
+    advanceFeeDate: Optional[str] = None  # "Paid" | "Not Paid"
     monthlyFees: Optional[Dict[str, str]] = None
+    monthlyFeeDates: Optional[Dict[str, str]] = None
     month: Optional[str] = None
     monthStatus: Optional[str] = None
+    monthDate: Optional[str] = None

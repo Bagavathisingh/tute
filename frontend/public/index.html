@@ -12,7 +12,22 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- External CSS stylesheet -->
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/styles.css?v=3.3">
+    
+    <script>
+        (function() {
+            if (localStorage.getItem("darkMode") === "true") {
+                document.documentElement.classList.add("dark-mode");
+            }
+        })();
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const darkIcon = document.getElementById("dark-icon");
+            const isDark = html.classList.toggle("dark-mode");
+            localStorage.setItem("darkMode", isDark ? "true" : "false");
+            if (darkIcon) darkIcon.className = isDark ? "fas fa-sun" : "fas fa-moon";
+        }
+    </script>
 </head>
 <body>
 
@@ -101,14 +116,14 @@
                             <label for="staff-user">Username</label>
                             <div class="input-wrapper">
                                 <i class="fas fa-user"></i>
-                                <input type="text" id="staff-user" placeholder="Enter username (e.g. admin)" required>
+                                <input type="text" id="staff-user" placeholder="Enter username" required>
                             </div>
                         </div>
                         <div class="form-group">
                             <label for="staff-pass">Password</label>
                             <div class="input-wrapper">
                                 <i class="fas fa-lock"></i>
-                                <input type="password" id="staff-pass" placeholder="Enter password (e.g. admin)" required>
+                                <input type="password" id="staff-pass" placeholder="Enter password" required>
                             </div>
                             <div class="error-message" id="staff-error">
                                 <i class="fas fa-circle-exclamation"></i> Invalid credentials.
@@ -142,7 +157,7 @@
                             <label for="student-pass">Password</label>
                             <div class="input-wrapper">
                                 <i class="fas fa-lock"></i>
-                                <input type="password" id="student-pass" placeholder="Enter password (any value)" required>
+                                <input type="password" id="student-pass" placeholder="Enter password" required>
                             </div>
                             <div class="error-message" id="student-error">
                                 <i class="fas fa-circle-exclamation"></i> Roll number not found in directory.
@@ -535,8 +550,8 @@
                         </div>
 
                         <!-- Fee Filters -->
-                        <div class="attendance-calendar-bar" style="margin-bottom: 1.5rem;">
-                            <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
+                        <div class="glass" style="margin-bottom: 1.5rem; padding: 1.2rem; border-radius: var(--radius-md); border: 1px solid var(--border-card); background: var(--bg-card);">
+                            <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; width: 100%;">
                                 <div class="search-input-wrapper" style="flex: 1; min-width: 220px;">
                                     <i class="fas fa-search"></i>
                                     <input type="text" id="fees-search-query" oninput="renderFeesTable()" placeholder="Search by student name or roll number...">
@@ -558,7 +573,7 @@
                             </div>
 
                             <!-- Fee Summary Stats (Advance Fee & Monthly Tracker) -->
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.2rem;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.2rem; width: 100%;">
                                 <div class="stat-card glass" style="padding: 1.2rem;">
                                     <div class="stat-info"><h4>Total Enrollments</h4><div class="stat-value" id="fees-stat-total">0</div></div>
                                     <i class="fas fa-users stat-icon" style="font-size: 1.6rem;"></i>
@@ -582,18 +597,7 @@
                                         <th>Roll No</th>
                                         <th>Standard</th>
                                         <th>Advance Fee</th>
-                                        <th>June</th>
-                                        <th>July</th>
-                                        <th>August</th>
-                                        <th>September</th>
-                                        <th>October</th>
-                                        <th>November</th>
-                                        <th>December</th>
-                                        <th>January</th>
-                                        <th>February</th>
-                                        <th>March</th>
-                                        <th>April</th>
-                                        <th>May</th>
+                                        <th id="fees-current-month-th">Current Month</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -604,44 +608,96 @@
                         </div>
                     </div>
 
-                    <!-- FEES EDIT MODAL (Advance Fee + Month-Wise Fees) -->
+                    <!-- FEES EDIT MODAL (Single Input Section: Paid/Not Paid & Date) -->
                     <div class="modal" id="fees-edit-modal">
-                        <div class="modal-content modal-lg" style="max-width: 650px;">
+                        <div class="modal-content" style="max-width: 480px;">
                             <div class="modal-header">
-                                <h3><i class="fas fa-indian-rupee-sign"></i> Update Fees — <span id="fees-modal-student-name">Student</span></h3>
+                                <h3><i class="fas fa-indian-rupee-sign"></i> Update Fee ? <span id="fees-modal-student-name">Student</span></h3>
                                 <button class="modal-close-btn" onclick="closeFeesModal()">&times;</button>
                             </div>
                             <form onsubmit="handleFeesFormSubmit(event)">
                                 <input type="hidden" id="fees-modal-roll">
-                                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-                                    <!-- 1. Advance Fee -->
-                                    <div class="form-group" style="background: var(--bg-main); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-card); margin-bottom: 1.5rem;">
-                                        <label for="fees-modal-advance" style="font-weight: 800; font-size: 0.95rem; color: var(--primary); display: flex; align-items: center; gap: 0.5rem;">
-                                            <i class="fas fa-shield-halved"></i> 1. Advance Fee Status *
-                                        </label>
-                                        <select id="fees-modal-advance" style="padding-left: 1rem; background: var(--bg-card); color: var(--text-main); font-weight: 700; width: 100%;">
-                                            <option value="Paid">Paid</option>
-                                            <option value="Not Paid">Not Paid</option>
-                                        </select>
-                                    </div>
-
-                                    <!-- 2. Monthly Fee (Month-Wise) -->
-                                    <div style="margin-bottom: 1rem;">
-                                        <label style="font-weight: 800; font-size: 0.95rem; color: var(--primary); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem;">
-                                            <i class="fas fa-calendar-days"></i> 2. Monthly Fee Status (Month-Wise)
-                                        </label>
-                                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.8rem;" id="fees-modal-months-container">
-                                            <!-- Dynamically populated month dropdowns (June to May) -->
+                                <div class="modal-body" style="padding: 1.5rem;">
+                                    <div class="glass" style="background: var(--bg-main); padding: 1.2rem; border-radius: var(--radius-md); border: 1px solid var(--border-card); display: flex; flex-direction: column; gap: 1rem;">
+                                        
+                                        <!-- Select Fee / Month -->
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label for="fees-modal-target" style="font-weight: 700; font-size: 0.85rem; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
+                                                <i class="fas fa-calendar-check" style="color: var(--primary);"></i> Fee / Month *
+                                            </label>
+                                            <select id="fees-modal-target" onchange="onFeeTargetChange()" style="width: 100%; padding: 0.6rem 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-input); border-radius: var(--radius-sm); font-weight: 700; font-size: 0.95rem;">
+                                                <!-- Dynamically populated -->
+                                            </select>
                                         </div>
+
+                                        <!-- Status: Paid / Not Paid -->
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label for="fees-modal-status" style="font-weight: 700; font-size: 0.85rem; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
+                                                <i class="fas fa-circle-check" style="color: var(--primary);"></i> Payment Status *
+                                            </label>
+                                            <select id="fees-modal-status" onchange="onFeeStatusChange()" style="width: 100%; padding: 0.6rem 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-input); border-radius: var(--radius-sm); font-weight: 700; font-size: 0.95rem;">
+                                                <option value="Paid">Paid</option>
+                                                <option value="Not Paid">Not Paid</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Date confirmation input -->
+                                        <div class="form-group" id="fees-modal-date-container" style="margin-bottom: 0;">
+                                            <label for="fees-modal-date" style="font-weight: 700; font-size: 0.85rem; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem;">
+                                                <i class="far fa-calendar-check" style="color: var(--primary);"></i> Payment Date *
+                                            </label>
+                                            <input type="date" id="fees-modal-date" required style="width: 100%; padding: 0.6rem 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-input); border-radius: var(--radius-sm); font-weight: 600; font-size: 0.95rem;">
+                                        </div>
+
                                     </div>
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" onclick="closeFeesModal()">Cancel</button>
                                     <button type="submit" class="btn btn-success" id="fees-modal-save-btn">
-                                        <i class="fas fa-floppy-disk"></i> Save Fees to Database
+                                        <i class="fas fa-floppy-disk"></i> Save Fee Update
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+
+                    <!-- FEES DETAIL MODAL (View All Months) -->
+                    <div class="modal" id="fees-detail-modal">
+                        <div class="modal-content modal-lg" style="max-width: 650px;">
+                            <div class="modal-header">
+                                <h3><i class="fas fa-indian-rupee-sign"></i> Fees History — <span id="fees-detail-student-name">Student</span></h3>
+                                <button class="modal-close-btn" onclick="closeFeesDetailModal()">&times;</button>
+                            </div>
+                            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem;">
+                                    <div style="flex: 1; min-width: 140px; background: var(--bg-main); padding: 0.8rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-card);">
+                                        <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Roll No</div>
+                                        <div style="font-weight: 800; font-size: 1rem;" id="fees-detail-roll">—</div>
+                                    </div>
+                                    <div style="flex: 1; min-width: 140px; background: var(--bg-main); padding: 0.8rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-card);">
+                                        <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Standard</div>
+                                        <div style="font-weight: 800; font-size: 1rem;" id="fees-detail-standard">—</div>
+                                    </div>
+                                    <div style="flex: 1; min-width: 140px; background: var(--bg-main); padding: 0.8rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-card);">
+                                        <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Advance Fee</div>
+                                        <div style="font-weight: 800; font-size: 1rem;" id="fees-detail-advance">—</div>
+                                    </div>
+                                    <div style="flex: 1; min-width: 140px; background: var(--bg-main); padding: 0.8rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-card);">
+                                        <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Current Date & Month</div>
+                                        <div style="font-weight: 800; font-size: 1rem; color: var(--primary);" id="fees-detail-current-date">-</div>
+                                    </div>
+                                </div>
+                                <label style="font-weight: 800; font-size: 0.95rem; color: var(--primary); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem;">
+                                    <i class="fas fa-calendar-days"></i> Payment History (Past & Current Month)
+                                </label>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 0.8rem;" id="fees-detail-months-container"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="closeFeesDetailModal()">Close</button>
+                                <button type="button" class="btn btn-primary" id="fees-detail-edit-btn">
+                                    <i class="fas fa-edit"></i> Edit Fees
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -1485,6 +1541,6 @@
     </div>
 
     <!-- CORE SYSTEM SCRIPTS -->
-    <script defer src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=3.3"></script>
 </body>
 </html>

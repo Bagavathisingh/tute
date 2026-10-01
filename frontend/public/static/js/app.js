@@ -279,7 +279,7 @@ async function handleStaffLogin(event) {
             Session.userRole = response.role || (response.userType === 'admin' ? 'admin' : 'staff');
             Session.currentStudentRoll = null;
             sessionStorage.setItem("currentUserType", Session.currentUserType);
-            sessionStorage.setItem("userRole", Session.userRole);  // persist role
+            sessionStorage.setItem("userRole", Session.userRole);
             sessionStorage.removeItem("currentStudentRoll");
 
             document.getElementById("staff-user").value = "";
@@ -612,9 +612,12 @@ function openAddStudentModal() {
     document.getElementById("modal-input-email").value = "";
     document.getElementById("modal-input-phone").value = "";
     document.getElementById("modal-input-address").value = "";
-    document.getElementById("modal-input-fees").value = "Paid";
-    document.getElementById("modal-input-fees-amount").value = "25000";
-    document.getElementById("modal-input-fees-paid").value = "25000";
+    const fEl = document.getElementById("modal-input-fees");
+    if (fEl) fEl.value = "Paid";
+    const fAmtEl = document.getElementById("modal-input-fees-amount");
+    if (fAmtEl) fAmtEl.value = "25000";
+    const fPaidEl = document.getElementById("modal-input-fees-paid");
+    if (fPaidEl) fPaidEl.value = "25000";
     document.getElementById("modal-input-comment").value = "";
 
     // Reset Simplified Parent Info
@@ -652,9 +655,12 @@ function openEditStudentModal(rollNumber) {
     document.getElementById("modal-input-email").value = student.email || "";
     document.getElementById("modal-input-phone").value = student.phone || "";
     document.getElementById("modal-input-address").value = student.address || "";
-    document.getElementById("modal-input-fees").value = student.advanceFee || student.feesStatus || "Paid";
-    document.getElementById("modal-input-fees-amount").value = student.feesAmount !== undefined ? student.feesAmount : 25000;
-    document.getElementById("modal-input-fees-paid").value = student.feesPaid !== undefined ? student.feesPaid : 25000;
+    const fEditEl = document.getElementById("modal-input-fees");
+    if (fEditEl) fEditEl.value = student.advanceFee || student.feesStatus || "Paid";
+    const fEditAmtEl = document.getElementById("modal-input-fees-amount");
+    if (fEditAmtEl) fEditAmtEl.value = student.feesAmount !== undefined ? student.feesAmount : 25000;
+    const fEditPaidEl = document.getElementById("modal-input-fees-paid");
+    if (fEditPaidEl) fEditPaidEl.value = student.feesPaid !== undefined ? student.feesPaid : 25000;
     document.getElementById("modal-input-comment").value = student.performanceComment || "";
 
     // Populate Simplified Parent Details
@@ -1036,8 +1042,30 @@ function onMarksStandardOrTestChange() {
 
 function activateAddMarksFlow() {
     const stdSelect = document.getElementById("marks-standard-select");
-    if (stdSelect) stdSelect.focus();
+    if (!stdSelect) return;
+
+    let currentStd = stdSelect.value;
+    let students = AppStore.students.filter(s => s.standard === currentStd);
+
+    // If currently selected standard has no enrolled students, automatically select the first standard that does
+    if (students.length === 0) {
+        const stdWithStudents = StandardsList.find(std => AppStore.students.some(s => s.standard === std));
+        if (stdWithStudents) {
+            stdSelect.value = stdWithStudents;
+            currentStd = stdWithStudents;
+        }
+    }
+
     loadMarksTable();
+
+    // Focus the first marks input box immediately so staff can type marks right away
+    const firstInput = document.querySelector("#marks-input-table tbody input.marks-input");
+    if (firstInput) {
+        firstInput.focus();
+        firstInput.select();
+    } else {
+        alert("No students are currently enrolled in any standard. Please add students first via the Students tab.");
+    }
 }
 
 async function loadTestsFromAPI() {
@@ -1187,10 +1215,64 @@ async function saveActiveMarks() {
 }
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// FEES MANAGEMENT MODULE (Staff/Admin) â€” Advance Fee + Month-Wise (Juneâ€“May)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// FEES MANAGEMENT MODULE (Staff/Admin) ? Single Input Section + Current Month View
 const MONTHS_ORDER  = ['june','july','august','september','october','november','december','january','february','march','april','may'];
 const MONTHS_LABELS = {june:'June',july:'July',august:'August',september:'September',october:'October',november:'November',december:'December',january:'January',february:'February',march:'March',april:'April',may:'May'};
+
+function getCurrentAcademicMonth() {
+    const jsMonth = new Date().getMonth();
+    const map = {0:'january',1:'february',2:'march',3:'april',4:'may',5:'june',6:'july',7:'august',8:'september',9:'october',10:'november',11:'december'};
+    return map[jsMonth];
+}
+
+function getAcademicMonthYear(monthKey) {
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth();
+    const secondHalf = ['january', 'february', 'march', 'april', 'may'];
+    if (curMonth >= 5) {
+        return secondHalf.includes(monthKey) ? curYear + 1 : curYear;
+    } else {
+        return secondHalf.includes(monthKey) ? curYear : curYear - 1;
+    }
+}
+
+function formatFeeDate(dateStr) {
+    if (!dateStr) return '';
+    if (/^\d{2}\s[A-Za-z]{3}\s\d{4}$/.test(dateStr)) return dateStr;
+    try {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            if (!isNaN(d.getTime())) {
+                return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            }
+        }
+    } catch(e) {}
+    return dateStr;
+}
+
+function toInputDateFormat(dateStr) {
+    if (!dateStr) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    try {
+        const d = new Date(dateStr);
+        if (!isNaN(d.getTime())) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+    } catch(e) {}
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+}
 
 function renderFeesTable() {
     const search   = (document.getElementById('fees-search-query')?.value || '').toLowerCase().trim();
@@ -1198,6 +1280,13 @@ function renderFeesTable() {
     const fStd     = document.getElementById('fees-filter-standard')?.value || 'All';
     const tbody    = document.getElementById('fees-management-table')?.querySelector('tbody');
     if (!tbody) return;
+
+    const currentMonth = getCurrentAcademicMonth();
+    const currentMonthLabel = MONTHS_LABELS[currentMonth] || 'Current Month';
+    const today = new Date();
+    const todayShort = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    const thEl = document.getElementById('fees-current-month-th');
+    if (thEl) thEl.innerHTML = `${currentMonthLabel} <span style="font-size:0.75rem;font-weight:600;opacity:0.85;">(${todayShort})</span>`;
 
     const filtered = AppStore.students.filter(s => {
         const matchSearch = !search || s.name?.toLowerCase().includes(search) || s.rollNumber?.toLowerCase().includes(search);
@@ -1207,7 +1296,6 @@ function renderFeesTable() {
         return matchSearch && matchAdv && matchStd;
     });
 
-    // Summary stats
     const totalEl = document.getElementById('fees-stat-total');
     const paidEl  = document.getElementById('fees-stat-paid');
     const pendEl  = document.getElementById('fees-stat-pending');
@@ -1219,7 +1307,7 @@ function renderFeesTable() {
 
     tbody.innerHTML = '';
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="17" style="text-align:center;color:var(--text-muted);padding:1.5rem;">No students match the current filter.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;">No students match the current filter.</td></tr>`;
         return;
     }
 
@@ -1227,22 +1315,21 @@ function renderFeesTable() {
         const advance  = s.advanceFee || 'Not Paid';
         const advBadge = advance === 'Paid' ? 'badge-success' : 'badge-danger';
         const mf = s.monthlyFees || {};
-
-        const monthCells = MONTHS_ORDER.map(m => {
-            const val = mf[m] || 'Not Paid';
-            const cls = val === 'Paid' ? 'badge-success' : 'badge-danger';
-            return `<td style="text-align:center;"><span class="badge ${cls}" style="font-size:0.65rem;">${val === 'Paid' ? '\u2714' : '\u2718'}</span></td>`;
-        }).join('');
+        const curVal = mf[currentMonth] || 'Not Paid';
+        const curCls = curVal === 'Paid' ? 'badge-success' : 'badge-danger';
 
         tbody.innerHTML += `
-            <tr>
+            <tr style="cursor:pointer;" onclick="openFeesDetailModal('${escapeHtml(s.rollNumber)}')">
                 <td><strong>${escapeHtml(s.name)}</strong><div style="font-size:0.75rem;color:var(--text-muted);">${escapeHtml(s.studentId||'STU-'+s.rollNumber)}</div></td>
                 <td><code>${escapeHtml(s.rollNumber)}</code></td>
                 <td>${escapeHtml(s.standard)}</td>
                 <td><span class="badge ${advBadge}">${escapeHtml(advance)}</span></td>
-                ${monthCells}
+                <td style="text-align:center;">
+                    <span class="badge ${curCls}">${curVal}</span>
+                    <div style="font-size:0.68rem;color:var(--text-muted);margin-top:2px;">${todayShort}</div>
+                </td>
                 <td>
-                    <button class="btn btn-secondary btn-icon" onclick="openFeesModal('${escapeHtml(s.rollNumber)}')" title="Update Fees">
+                    <button class="btn btn-secondary btn-icon" onclick="event.stopPropagation(); openFeesModal('${escapeHtml(s.rollNumber)}')" title="Update Fees">
                         <i class="fas fa-edit" style="color:var(--primary);"></i>
                     </button>
                 </td>
@@ -1251,29 +1338,160 @@ function renderFeesTable() {
     });
 }
 
-function openFeesModal(rollNumber) {
+function openFeesDetailModal(rollNumber) {
     const s = AppStore.students.find(st => st.rollNumber === rollNumber);
     if (!s) return;
-    document.getElementById('fees-modal-roll').value = rollNumber;
-    document.getElementById('fees-modal-student-name').innerText = s.name;
 
-    const advEl = document.getElementById('fees-modal-advance');
-    if (advEl) advEl.value = s.advanceFee || 'Not Paid';
+    document.getElementById('fees-detail-student-name').innerText = s.name;
+    document.getElementById('fees-detail-roll').innerText = s.rollNumber;
+    document.getElementById('fees-detail-standard').innerText = s.standard || '?';
 
-    const monthsContainer = document.getElementById('fees-modal-months-container');
-    if (monthsContainer) {
-        const mf = s.monthlyFees || {};
-        monthsContainer.innerHTML = MONTHS_ORDER.map(month => `
-            <div style="background: var(--bg-card); padding: 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border-card);">
-                <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem; text-transform: uppercase;">${MONTHS_LABELS[month]}</label>
-                <select id="fees-modal-month-${month}" style="width: 100%; padding: 0.4rem; background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border-input); border-radius: 4px; font-weight: 700; font-size: 0.85rem;">
-                    <option value="Paid"     ${(mf[month]||'Not Paid')==='Paid'    ?'selected':''}>Paid</option>
-                    <option value="Not Paid" ${(mf[month]||'Not Paid')==='Not Paid'?'selected':''}>Not Paid</option>
-                </select>
-            </div>
-        `).join('');
+    const advance = s.advanceFee || 'Not Paid';
+    const advEl = document.getElementById('fees-detail-advance');
+    if (advEl) {
+        const advDate = s.advanceFeeDate ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.3rem;"><i class="fas fa-calendar-check" style="color:var(--success);"></i> Paid: <strong>${escapeHtml(formatFeeDate(s.advanceFeeDate))}</strong></div>` : '';
+        advEl.innerHTML = `<span class="badge ${advance === 'Paid' ? 'badge-success' : 'badge-danger'}">${escapeHtml(advance)}</span>${advDate}`;
     }
 
+    const today = new Date();
+    const todayFormatted = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const curDateEl = document.getElementById('fees-detail-current-date');
+    if (curDateEl) {
+        curDateEl.innerText = todayFormatted;
+    }
+
+    const currentMonth = getCurrentAcademicMonth();
+    const currentMonthIdx = MONTHS_ORDER.indexOf(currentMonth);
+    // Show ONLY past months and current month (exclude future months)
+    const visibleMonths = MONTHS_ORDER.slice(0, currentMonthIdx + 1);
+
+    const mf = s.monthlyFees || {};
+    const mfDates = s.monthlyFeeDates || {};
+    const container = document.getElementById('fees-detail-months-container');
+    if (container) {
+        container.innerHTML = visibleMonths.map(month => {
+            const val = mf[month] || 'Not Paid';
+            const isPaid = val === 'Paid';
+            const cls = isPaid ? 'badge-success' : 'badge-danger';
+            const isCurrent = month === currentMonth;
+            const monthYear = getAcademicMonthYear(month);
+
+            let dateText = '';
+            if (isPaid) {
+                const storedDate = mfDates[month];
+                dateText = storedDate ? formatFeeDate(storedDate) : (isCurrent ? todayFormatted : `05 ${MONTHS_LABELS[month].slice(0, 3)} ${monthYear}`);
+            } else {
+                dateText = isCurrent ? `As of ${todayFormatted}` : `Due: 10 ${MONTHS_LABELS[month].slice(0, 3)} ${monthYear}`;
+            }
+
+            const highlight = isCurrent 
+                ? 'border: 2px solid var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.15);' 
+                : 'border: 1px solid var(--border-card);';
+
+            return `
+                <div style="background: var(--bg-card); padding: 0.8rem; border-radius: var(--radius-sm); ${highlight} position: relative; cursor: pointer;" onclick="openFeesModal('${escapeHtml(s.rollNumber)}', '${month}')" title="Click to update fee for ${MONTHS_LABELS[month]}">
+                    ${isCurrent ? '<div style="position:absolute;top:-7px;right:6px;font-size:0.55rem;background:var(--primary);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;">CURRENT</div>' : ''}
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.3rem;">
+                        <span style="font-size: 0.85rem; font-weight: 800; color: var(--text-main);">${MONTHS_LABELS[month]} ${monthYear}</span>
+                        <i class="fas fa-pen-to-square" style="font-size:0.75rem; color:var(--primary); opacity:0.7;"></i>
+                    </div>
+                    <div style="margin-bottom: 0.45rem;">
+                        <span class="badge ${cls}" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;">${val}</span>
+                    </div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                        <i class="${isPaid ? 'fas fa-calendar-check' : 'fas fa-clock'}" style="color: ${isPaid ? 'var(--success)' : 'var(--warning)'}; font-size: 0.75rem;"></i>
+                        <span>${isPaid ? 'Paid on' : 'Date'}: <strong>${escapeHtml(dateText)}</strong></span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    const editBtn = document.getElementById('fees-detail-edit-btn');
+    if (editBtn) {
+        editBtn.onclick = function() {
+            closeFeesDetailModal();
+            openFeesModal(rollNumber, currentMonth);
+        };
+    }
+
+    document.getElementById('fees-detail-modal').classList.add('active');
+}
+
+function closeFeesDetailModal() {
+    document.getElementById('fees-detail-modal').classList.remove('active');
+}
+
+function onFeeTargetChange() {
+    const roll = document.getElementById('fees-modal-roll')?.value;
+    const target = document.getElementById('fees-modal-target')?.value;
+    const statusSelect = document.getElementById('fees-modal-status');
+    const dateInput = document.getElementById('fees-modal-date');
+    if (!roll || !target || !statusSelect || !dateInput) return;
+
+    const s = AppStore.students.find(st => st.rollNumber === roll);
+    if (!s) return;
+
+    if (target === 'advance') {
+        const advStatus = s.advanceFee || 'Not Paid';
+        statusSelect.value = advStatus;
+        dateInput.value = toInputDateFormat(s.advanceFeeDate || '');
+    } else {
+        const mf = s.monthlyFees || {};
+        const mfDates = s.monthlyFeeDates || {};
+        const mStatus = mf[target] || 'Not Paid';
+        statusSelect.value = mStatus;
+        dateInput.value = toInputDateFormat(mfDates[target] || '');
+    }
+
+    if (statusSelect.value === 'Paid' && !dateInput.value) {
+        dateInput.value = toInputDateFormat('');
+    }
+}
+
+function onFeeStatusChange() {
+    const statusSelect = document.getElementById('fees-modal-status');
+    const dateInput = document.getElementById('fees-modal-date');
+    if (!statusSelect || !dateInput) return;
+
+    if (statusSelect.value === 'Paid' && !dateInput.value) {
+        dateInput.value = toInputDateFormat('');
+    }
+}
+
+function openFeesModal(rollNumber, preselectTarget) {
+    const s = AppStore.students.find(st => st.rollNumber === rollNumber);
+    if (!s) return;
+
+    document.getElementById('fees-modal-roll').value = rollNumber;
+    document.getElementById('fees-modal-student-name').innerText = `${s.name} (${s.rollNumber})`;
+
+    const currentMonth = getCurrentAcademicMonth();
+    const currentMonthIdx = MONTHS_ORDER.indexOf(currentMonth);
+    const visibleMonths = MONTHS_ORDER.slice(0, currentMonthIdx + 1);
+
+    const targetSelect = document.getElementById('fees-modal-target');
+    if (targetSelect) {
+        let options = '';
+        // 1. Current Month (first option)
+        const curYear = getAcademicMonthYear(currentMonth);
+        options += `<option value="${currentMonth}">Current Month ? ${MONTHS_LABELS[currentMonth]} ${curYear}</option>`;
+
+        // 2. Past Months
+        for (let i = currentMonthIdx - 1; i >= 0; i--) {
+            const m = visibleMonths[i];
+            const mYear = getAcademicMonthYear(m);
+            options += `<option value="${m}">${MONTHS_LABELS[m]} ${mYear}</option>`;
+        }
+
+        // 3. Advance Fee
+        options += `<option value="advance">Advance Fee</option>`;
+
+        targetSelect.innerHTML = options;
+        targetSelect.value = preselectTarget || currentMonth;
+    }
+
+    onFeeTargetChange();
     document.getElementById('fees-edit-modal').classList.add('active');
 }
 
@@ -1283,14 +1501,14 @@ function closeFeesModal() {
 
 async function handleFeesFormSubmit(event) {
     event.preventDefault();
-    const roll       = document.getElementById('fees-modal-roll').value;
-    const advanceFee = document.getElementById('fees-modal-advance')?.value || 'Not Paid';
+    const roll   = document.getElementById('fees-modal-roll').value;
+    const target = document.getElementById('fees-modal-target').value;
+    const status = document.getElementById('fees-modal-status').value;
+    const dateVal = document.getElementById('fees-modal-date').value;
+    const formattedDate = (status === 'Paid' && dateVal) ? formatFeeDate(dateVal) : '';
 
-    const monthlyFees = {};
-    MONTHS_ORDER.forEach(month => {
-        const el = document.getElementById(`fees-modal-month-${month}`);
-        if (el) monthlyFees[month] = el.value;
-    });
+    const student = AppStore.students.find(s => s.rollNumber === roll);
+    if (!student) return;
 
     const saveBtn = document.getElementById('fees-modal-save-btn');
     const orig    = saveBtn.innerHTML;
@@ -1298,21 +1516,53 @@ async function handleFeesFormSubmit(event) {
     saveBtn.disabled  = true;
 
     try {
+        let payload = {};
+
+        if (target === 'advance') {
+            payload = {
+                advanceFee: status,
+                advanceFeeDate: formattedDate,
+                feesStatus: status
+            };
+            student.advanceFee = status;
+            student.advanceFeeDate = formattedDate;
+            student.feesStatus = status;
+        } else {
+            if (!student.monthlyFees) student.monthlyFees = {};
+            if (!student.monthlyFeeDates) student.monthlyFeeDates = {};
+
+            student.monthlyFees[target] = status;
+            if (status === 'Paid') {
+                student.monthlyFeeDates[target] = formattedDate;
+            } else {
+                delete student.monthlyFeeDates[target];
+            }
+
+            payload = {
+                monthlyFees: student.monthlyFees,
+                monthlyFeeDates: student.monthlyFeeDates,
+                month: target,
+                monthStatus: status,
+                monthDate: formattedDate
+            };
+        }
+
         await apiRequest(`/students/${encodeURIComponent(roll)}/fees`, {
             method: 'PUT',
-            body: JSON.stringify({ advanceFee, monthlyFees, feesStatus: advanceFee })
+            body: JSON.stringify(payload)
         });
-
-        const student = AppStore.students.find(s => s.rollNumber === roll);
-        if (student) {
-            student.advanceFee  = advanceFee;
-            student.feesStatus  = advanceFee;
-            student.monthlyFees = monthlyFees;
-        }
 
         closeFeesModal();
         renderFeesTable();
-        alert(`Fees updated successfully in MongoDB for ${roll}.`);
+
+        // If the detail modal was open, refresh it with updated data
+        const detailModal = document.getElementById('fees-detail-modal');
+        if (detailModal && detailModal.classList.contains('active')) {
+            openFeesDetailModal(roll);
+        }
+
+        const targetLabel = target === 'advance' ? 'Advance Fee' : `${MONTHS_LABELS[target] || target}`;
+        alert(`Fees updated successfully for ${student.name} (${targetLabel}: ${status}).`);
     } catch (e) {
         alert('Error updating fees: ' + e.message);
     } finally {
@@ -1321,7 +1571,6 @@ async function handleFeesFormSubmit(event) {
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // EXAM SCHEDULE MANAGEMENT MODULE (Staff/Admin)
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function renderExamsTable() {
@@ -2176,13 +2425,32 @@ async function loadStudentPortal() {
             const advBadgeCls = advFee === 'Paid' ? 'badge-success' : 'badge-danger';
             const mf = student.monthlyFees || {};
 
-            const monthCards = MONTHS_ORDER.map(m => {
+            const currentMonth = getCurrentAcademicMonth();
+            const currentMonthIdx = MONTHS_ORDER.indexOf(currentMonth);
+            const visibleMonths = MONTHS_ORDER.slice(0, currentMonthIdx + 1);
+            const today = new Date();
+            const todayFormatted = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            const mfDates = student.monthlyFeeDates || {};
+
+            const monthCards = visibleMonths.map(m => {
                 const status = mf[m] || 'Not Paid';
-                const cls = status === 'Paid' ? 'badge-success' : 'badge-danger';
+                const isPaid = status === 'Paid';
+                const cls = isPaid ? 'badge-success' : 'badge-danger';
+                const isCurrent = m === currentMonth;
+                const monthYear = getAcademicMonthYear(m);
+                const dateText = isPaid
+                    ? (mfDates[m] || (isCurrent ? todayFormatted : `05 ${MONTHS_LABELS[m].slice(0,3)} ${monthYear}`))
+                    : (isCurrent ? `As of ${todayFormatted}` : `Due: 10 ${MONTHS_LABELS[m].slice(0,3)} ${monthYear}`);
+
                 return `
-                    <div style="background: var(--bg-card); padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-card); text-align: center;">
-                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 0.4rem;">${MONTHS_LABELS[m]}</span>
+                    <div style="background: var(--bg-card); padding: 0.8rem; border-radius: var(--radius-sm); border: ${isCurrent ? '2px solid var(--primary)' : '1px solid var(--border-card)'}; text-align: center; position: relative;">
+                        ${isCurrent ? '<div style="position:absolute;top:-7px;right:6px;font-size:0.55rem;background:var(--primary);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;">CURRENT</div>' : ''}
+                        <span style="font-size: 0.8rem; font-weight: 800; color: var(--text-main); display: block; margin-bottom: 0.2rem;">${MONTHS_LABELS[m]} ${monthYear}</span>
                         <span class="badge ${cls}" style="font-size: 0.85rem; padding: 0.3rem 0.6rem;">${escapeHtml(status)}</span>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem; display: flex; align-items: center; justify-content: center; gap: 0.3rem;">
+                            <i class="${isPaid ? 'fas fa-calendar-check' : 'fas fa-clock'}" style="color: ${isPaid ? 'var(--success)' : 'var(--warning)'}; font-size: 0.75rem;"></i>
+                            <span>${isPaid ? 'Paid on' : 'Date'}: <strong>${escapeHtml(dateText)}</strong></span>
+                        </div>
                     </div>
                 `;
             }).join('');

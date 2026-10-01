@@ -417,10 +417,16 @@ async def update_fees(
         update_data["feesPaid"] = data.feesPaid
     if data.advanceFee is not None:
         update_data["advanceFee"] = data.advanceFee
+    if getattr(data, "advanceFeeDate", None) is not None:
+        update_data["advanceFeeDate"] = data.advanceFeeDate
     if data.monthlyFees is not None:
         update_data["monthlyFees"] = data.monthlyFees
+    if getattr(data, "monthlyFeeDates", None) is not None:
+        update_data["monthlyFeeDates"] = data.monthlyFeeDates
     if data.month and data.monthStatus:
         update_data[f"monthlyFees.{data.month}"] = data.monthStatus
+    if data.month and getattr(data, "monthDate", None) is not None:
+        update_data[f"monthlyFeeDates.{data.month}"] = data.monthDate
 
     if not update_data:
         raise HTTPException(status_code=400, detail="No fee fields provided for update")
