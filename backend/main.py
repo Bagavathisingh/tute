@@ -1,8 +1,5 @@
 import sys
 from pathlib import Path
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 # Ensure both backend directory and repository root are on sys.path
 BASE_DIR = Path(__file__).resolve().parent
@@ -11,14 +8,20 @@ for p in [str(BASE_DIR), str(PARENT_DIR)]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
+# Alias app and backend.app so all router imports share the exact same modules
 try:
-    from app.core.database import connect_to_mongo, close_mongo_connection, get_database
-    from app.core.seed import seed_initial_data
-    from app.routers import students, standards, timetables, auth, exams, tests
-except ImportError:
-    from backend.app.core.database import connect_to_mongo, close_mongo_connection, get_database
-    from backend.app.core.seed import seed_initial_data
-    from backend.app.routers import students, standards, timetables, auth, exams, tests
+    import app
+    sys.modules["backend.app"] = app
+    import app.core.database
+    sys.modules["backend.app.core.database"] = app.core.database
+except Exception:
+    pass
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.database import connect_to_mongo, close_mongo_connection, get_database
+from app.core.seed import seed_initial_data
+from app.routers import students, standards, timetables, auth, exams, tests
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
