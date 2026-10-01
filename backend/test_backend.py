@@ -1,8 +1,8 @@
 import asyncio
 from httpx import AsyncClient, ASGITransport
 from main import app
-from app.core.database import connect_to_mongo, close_mongo_connection, get_database
-from app.core.seed import seed_initial_data
+from backend.app.core.database import connect_to_mongo, close_mongo_connection, get_database
+from backend.app.core.seed import seed_initial_data
 
 async def run_test():
     try:
