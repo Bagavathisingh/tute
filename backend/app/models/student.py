@@ -1,7 +1,7 @@
 import re
 from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Optional, List, Any
-from app.models.review import ReviewItem
+from backend.app.models.review import ReviewItem
 
 def validate_phone_str(v: Optional[str]) -> str:
     if not v or not str(v).strip():

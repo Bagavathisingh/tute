@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from app.core.database import get_database
-from app.models.auth import StaffLoginRequest, StudentLoginRequest, LoginResponse
+from backend.app.core.database import get_database
+from backend.app.models.auth import StaffLoginRequest, StudentLoginRequest, LoginResponse
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 

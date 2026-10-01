@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import uuid
 from datetime import datetime
-from app.core.database import get_database
+from backend.app.core.database import get_database
 
 router = APIRouter(prefix="/api/tests", tags=["Tests"])
 

@@ -2,8 +2,8 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from app.core.database import get_database
-from app.models.exam import ExamCreate, ExamSchedule
+from backend.app.core.database import get_database
+from backend.app.models.exam import ExamCreate, ExamSchedule
 
 router = APIRouter(prefix="/api/exams", tags=["Exams"])
 

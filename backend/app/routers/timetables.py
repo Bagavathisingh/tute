@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from typing import Dict, Any, List
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from app.core.database import get_database
+from backend.app.core.database import get_database
 
 router = APIRouter(prefix="/api/timetables", tags=["Timetables"])
 

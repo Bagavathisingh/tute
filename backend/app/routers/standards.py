@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from app.core.database import get_database
-from app.models.standard import StandardCreate, ALL_DEFAULT_STANDARDS
+from backend.app.core.database import get_database
+from backend.app.models.standard import StandardCreate, ALL_DEFAULT_STANDARDS
 
 router = APIRouter(prefix="/api/standards", tags=["Standards"])
 

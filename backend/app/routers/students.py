@@ -4,8 +4,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from typing import List, Optional, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from app.core.database import get_database
-from app.models.student import (
+from backend.app.core.database import get_database
+from backend.app.models.student import (
     StudentCreate,
     StudentUpdate,
     StudentResponse,

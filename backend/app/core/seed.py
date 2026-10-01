@@ -1,5 +1,5 @@
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from app.models.standard import ALL_DEFAULT_STANDARDS
+from backend.app.models.standard import ALL_DEFAULT_STANDARDS
 
 async def seed_initial_data(db: AsyncIOMotorDatabase):
     """Seed only system standards if not present. No hardcoded student or timetable data."""
