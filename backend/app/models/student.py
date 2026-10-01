@@ -1,3 +1,4 @@
+from datetime import datetime
 import re
 from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Optional, List, Any
@@ -52,7 +53,7 @@ class StudentBase(BaseModel):
     standard: str = Field(..., min_length=1)
     section: str = "A"
     group: str = "General"  # "General", "Science Group", "Computer Group", "Arts Group", "Commerce Group"
-    admissionDate: Optional[str] = ""
+    admissionDate: Optional[str] = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%d"))
     email: Optional[str] = ""
     phone: Optional[str] = ""
     address: Optional[str] = ""

@@ -1215,7 +1215,7 @@ async function saveActiveMarks() {
 }
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// FEES MANAGEMENT MODULE (Staff/Admin) ? Single Input Section + Current Month View
+// FEES MANAGEMENT MODULE (Staff/Admin) ? Managed Per-Student From Admission Date
 const MONTHS_ORDER  = ['june','july','august','september','october','november','december','january','february','march','april','may'];
 const MONTHS_LABELS = {june:'June',july:'July',august:'August',september:'September',october:'October',november:'November',december:'December',january:'January',february:'February',march:'March',april:'April',may:'May'};
 
@@ -1274,6 +1274,54 @@ function toInputDateFormat(dateStr) {
     return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 }
 
+// Calculate the start month for fee obligations from when the student was added to the site
+function getStudentAdmissionMonthInfo(student) {
+    if (!student || !student.admissionDate) {
+        return { startIdx: 0, monthKey: 'june', formattedDate: 'Session Start (June)' };
+    }
+    try {
+        const parts = String(student.admissionDate).split('-');
+        if (parts.length === 3) {
+            const y = parseInt(parts[0]);
+            const m = parseInt(parts[1]) - 1; // 0=Jan...11=Dec
+            const map = {0:'january',1:'february',2:'march',3:'april',4:'may',5:'june',6:'july',7:'august',8:'september',9:'october',10:'november',11:'december'};
+            const admMonthKey = map[m];
+            const admIdx = MONTHS_ORDER.indexOf(admMonthKey);
+
+            const now = new Date();
+            const curYear = now.getFullYear();
+            const curMonth = now.getMonth();
+            const currentAcadStartYear = (curMonth >= 5) ? curYear : curYear - 1;
+
+            // If admitted before this academic year started, they are a continuing student (fees start from June)
+            if (y < currentAcadStartYear || (y === currentAcadStartYear && m < 5)) {
+                return { startIdx: 0, monthKey: 'june', formattedDate: formatFeeDate(student.admissionDate) };
+            }
+
+            return {
+                startIdx: admIdx >= 0 ? admIdx : 0,
+                monthKey: admMonthKey || 'june',
+                formattedDate: formatFeeDate(student.admissionDate)
+            };
+        }
+    } catch(e) {}
+    return { startIdx: 0, monthKey: 'june', formattedDate: 'Session Start (June)' };
+}
+
+// Returns only the months from the student's admission month up to the current month
+function getStudentFeeMonths(student) {
+    const currentMonth = getCurrentAcademicMonth();
+    const currentMonthIdx = MONTHS_ORDER.indexOf(currentMonth);
+    const admInfo = getStudentAdmissionMonthInfo(student);
+
+    if (admInfo.startIdx > currentMonthIdx) {
+        // Enrolled for a future month
+        return [MONTHS_ORDER[admInfo.startIdx]];
+    }
+
+    return MONTHS_ORDER.slice(admInfo.startIdx, currentMonthIdx + 1);
+}
+
 function renderFeesTable() {
     const search   = (document.getElementById('fees-search-query')?.value || '').toLowerCase().trim();
     const fAdvance = document.getElementById('fees-filter-advance')?.value  || 'All';
@@ -1283,6 +1331,7 @@ function renderFeesTable() {
 
     const currentMonth = getCurrentAcademicMonth();
     const currentMonthLabel = MONTHS_LABELS[currentMonth] || 'Current Month';
+    const currentMonthIdx = MONTHS_ORDER.indexOf(currentMonth);
     const today = new Date();
     const todayShort = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
     const thEl = document.getElementById('fees-current-month-th');
@@ -1318,16 +1367,29 @@ function renderFeesTable() {
         const curVal = mf[currentMonth] || 'Not Paid';
         const curCls = curVal === 'Paid' ? 'badge-success' : 'badge-danger';
 
+        const admInfo = getStudentAdmissionMonthInfo(s);
+        const isNotYetEnrolledThisMonth = admInfo.startIdx > currentMonthIdx;
+
+        let curCellHtml = '';
+        if (isNotYetEnrolledThisMonth) {
+            curCellHtml = `
+                <span class="badge" style="background:var(--border-card);color:var(--text-muted);font-size:0.75rem;">Starts in ${MONTHS_LABELS[admInfo.monthKey]}</span>
+                <div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">Joined: ${admInfo.formattedDate}</div>
+            `;
+        } else {
+            curCellHtml = `
+                <span class="badge ${curCls}">${curVal}</span>
+                <div style="font-size:0.68rem;color:var(--text-muted);margin-top:2px;">${todayShort}</div>
+            `;
+        }
+
         tbody.innerHTML += `
             <tr style="cursor:pointer;" onclick="openFeesDetailModal('${escapeHtml(s.rollNumber)}')">
                 <td><strong>${escapeHtml(s.name)}</strong><div style="font-size:0.75rem;color:var(--text-muted);">${escapeHtml(s.studentId||'STU-'+s.rollNumber)}</div></td>
                 <td><code>${escapeHtml(s.rollNumber)}</code></td>
                 <td>${escapeHtml(s.standard)}</td>
                 <td><span class="badge ${advBadge}">${escapeHtml(advance)}</span></td>
-                <td style="text-align:center;">
-                    <span class="badge ${curCls}">${curVal}</span>
-                    <div style="font-size:0.68rem;color:var(--text-muted);margin-top:2px;">${todayShort}</div>
-                </td>
+                <td style="text-align:center;">${curCellHtml}</td>
                 <td>
                     <button class="btn btn-secondary btn-icon" onclick="event.stopPropagation(); openFeesModal('${escapeHtml(s.rollNumber)}')" title="Update Fees">
                         <i class="fas fa-edit" style="color:var(--primary);"></i>
@@ -1353,6 +1415,12 @@ function openFeesDetailModal(rollNumber) {
         advEl.innerHTML = `<span class="badge ${advance === 'Paid' ? 'badge-success' : 'badge-danger'}">${escapeHtml(advance)}</span>${advDate}`;
     }
 
+    const admInfo = getStudentAdmissionMonthInfo(s);
+    const admEl = document.getElementById('fees-detail-admission-date');
+    if (admEl) {
+        admEl.innerHTML = `<span>${admInfo.formattedDate}</span><div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">Starts: ${MONTHS_LABELS[admInfo.monthKey]}</div>`;
+    }
+
     const today = new Date();
     const todayFormatted = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     const curDateEl = document.getElementById('fees-detail-current-date');
@@ -1361,9 +1429,8 @@ function openFeesDetailModal(rollNumber) {
     }
 
     const currentMonth = getCurrentAcademicMonth();
-    const currentMonthIdx = MONTHS_ORDER.indexOf(currentMonth);
-    // Show ONLY past months and current month (exclude future months)
-    const visibleMonths = MONTHS_ORDER.slice(0, currentMonthIdx + 1);
+    // Only show months starting from student's admission date up to current month!
+    const visibleMonths = getStudentFeeMonths(s);
 
     const mf = s.monthlyFees || {};
     const mfDates = s.monthlyFeeDates || {};
@@ -1468,27 +1535,33 @@ function openFeesModal(rollNumber, preselectTarget) {
 
     const currentMonth = getCurrentAcademicMonth();
     const currentMonthIdx = MONTHS_ORDER.indexOf(currentMonth);
-    const visibleMonths = MONTHS_ORDER.slice(0, currentMonthIdx + 1);
+    const visibleMonths = getStudentFeeMonths(s);
+    const admInfo = getStudentAdmissionMonthInfo(s);
 
     const targetSelect = document.getElementById('fees-modal-target');
     if (targetSelect) {
         let options = '';
-        // 1. Current Month (first option)
+        // 1. Current Month (if student is enrolled in current month or earlier)
         const curYear = getAcademicMonthYear(currentMonth);
-        options += `<option value="${currentMonth}">Current Month ? ${MONTHS_LABELS[currentMonth]} ${curYear}</option>`;
+        if (admInfo.startIdx <= currentMonthIdx) {
+            options += `<option value="${currentMonth}">Current Month ? ${MONTHS_LABELS[currentMonth]} ${curYear}</option>`;
+        }
 
-        // 2. Past Months
-        for (let i = currentMonthIdx - 1; i >= 0; i--) {
+        // 2. Applicable months for this student in reverse order
+        for (let i = visibleMonths.length - 1; i >= 0; i--) {
             const m = visibleMonths[i];
-            const mYear = getAcademicMonthYear(m);
-            options += `<option value="${m}">${MONTHS_LABELS[m]} ${mYear}</option>`;
+            if (m !== currentMonth) {
+                const mYear = getAcademicMonthYear(m);
+                options += `<option value="${m}">${MONTHS_LABELS[m]} ${mYear}</option>`;
+            }
         }
 
         // 3. Advance Fee
         options += `<option value="advance">Advance Fee</option>`;
 
         targetSelect.innerHTML = options;
-        targetSelect.value = preselectTarget || currentMonth;
+        const defaultChoice = (admInfo.startIdx <= currentMonthIdx) ? currentMonth : visibleMonths[0];
+        targetSelect.value = preselectTarget || defaultChoice;
     }
 
     onFeeTargetChange();
@@ -2427,7 +2500,7 @@ async function loadStudentPortal() {
 
             const currentMonth = getCurrentAcademicMonth();
             const currentMonthIdx = MONTHS_ORDER.indexOf(currentMonth);
-            const visibleMonths = MONTHS_ORDER.slice(0, currentMonthIdx + 1);
+            const visibleMonths = getStudentFeeMonths(student);
             const today = new Date();
             const todayFormatted = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
             const mfDates = student.monthlyFeeDates || {};
