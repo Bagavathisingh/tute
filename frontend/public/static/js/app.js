@@ -30,31 +30,43 @@ let Session = {
 
 // ------------------ API Helper Functions ------------------
 async function apiRequest(endpoint, options = {}) {
+    const roleHeader = Session.userRole ? { 'X-User-Role': Session.userRole } : {};
+    const defaultHeaders = {
+        'Content-Type': 'application/json',
+        ...roleHeader
+    };
+    const fetchOptions = {
+        ...options,
+        headers: {
+            ...defaultHeaders,
+            ...(options.headers || {})
+        }
+    };
+
+    const primaryUrl = `${API_BASE}${endpoint}`;
     try {
-        const url = `${API_BASE}${endpoint}`;
-        // Attach X-User-Role header to every request so the backend can
-        // enforce role-based access on write endpoints.
-        const roleHeader = Session.userRole ? { 'X-User-Role': Session.userRole } : {};
-        const defaultHeaders = {
-            'Content-Type': 'application/json',
-            ...roleHeader
-        };
-
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                ...defaultHeaders,
-                ...(options.headers || {})
-            }
-        });
-
+        const response = await fetch(primaryUrl, fetchOptions);
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: response.statusText }));
             throw new Error(errorData.detail || `Request failed with status ${response.status}`);
         }
-
         return await response.json();
     } catch (err) {
+        // If direct cross-origin fetch fails (CORS block, sleeping backend, or cold start),
+        // fallback automatically to the relative Next.js proxy route (/api/...) on the same origin.
+        if (API_BASE && API_BASE.startsWith('http') && !endpoint.startsWith('http')) {
+            try {
+                const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+                const proxyUrl = `/api${cleanEndpoint}`;
+                console.warn(`[API Proxy Fallback] Retrying ${endpoint} via Next.js proxy: ${proxyUrl}`);
+                const proxyResponse = await fetch(proxyUrl, fetchOptions);
+                if (proxyResponse.ok) {
+                    return await proxyResponse.json();
+                }
+            } catch (proxyErr) {
+                console.error(`[API Proxy Error] ${endpoint}:`, proxyErr);
+            }
+        }
         console.error(`[API Error] ${endpoint}:`, err);
         throw err;
     }
