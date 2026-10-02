@@ -8,7 +8,6 @@ for p in [str(BASE_DIR), str(PARENT_DIR)]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-# Alias app and backend.app so all router imports share the exact same modules
 try:
     import app
     sys.modules["backend.app"] = app
