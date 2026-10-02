@@ -17,47 +17,11 @@ try:
 except Exception:
     pass
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.database import connect_to_mongo, close_mongo_connection, get_database
 from app.core.seed import seed_initial_data
 from app.routers import students, standards, timetables, auth, exams, tests
-
-
-class CORSAlwaysMiddleware(BaseHTTPMiddleware):
-    """Ensures CORS headers are present on EVERY response, including errors."""
-    async def dispatch(self, request: Request, call_next):
-        origin = request.headers.get("origin", "*")
-
-        # Handle preflight OPTIONS immediately
-        if request.method == "OPTIONS":
-            return JSONResponse(
-                content={"detail": "OK"},
-                status_code=200,
-                headers={
-                    "Access-Control-Allow-Origin": origin,
-                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-User-Role, X-Requested-With",
-                    "Access-Control-Allow-Credentials": "true",
-                    "Access-Control-Max-Age": "600",
-                },
-            )
-
-        try:
-            response = await call_next(request)
-        except Exception:
-            response = JSONResponse(
-                content={"detail": "Internal server error"},
-                status_code=500,
-            )
-
-        # Always add CORS headers
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Vary"] = "Origin"
-        return response
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -88,8 +52,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# CORSAlwaysMiddleware runs as an outer wrapper — catches errors that bypass CORSMiddleware
-app.add_middleware(CORSAlwaysMiddleware)
 
 app.include_router(auth.router)
 app.include_router(students.router)
