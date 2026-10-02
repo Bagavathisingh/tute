@@ -419,13 +419,21 @@ async def update_fees(
         update_data["advanceFee"] = data.advanceFee
     if getattr(data, "advanceFeeDate", None) is not None:
         update_data["advanceFeeDate"] = data.advanceFeeDate
+    # Prevent MongoDB path conflicts by avoiding setting parent and child paths simultaneously
     if data.monthlyFees is not None:
-        update_data["monthlyFees"] = data.monthlyFees
-    if getattr(data, "monthlyFeeDates", None) is not None:
-        update_data["monthlyFeeDates"] = data.monthlyFeeDates
-    if data.month and data.monthStatus:
+        m_fees = dict(data.monthlyFees)
+        if data.month and data.monthStatus:
+            m_fees[data.month] = data.monthStatus
+        update_data["monthlyFees"] = m_fees
+    elif data.month and data.monthStatus:
         update_data[f"monthlyFees.{data.month}"] = data.monthStatus
-    if data.month and getattr(data, "monthDate", None) is not None:
+
+    if getattr(data, "monthlyFeeDates", None) is not None:
+        m_dates = dict(data.monthlyFeeDates)
+        if data.month and getattr(data, "monthDate", None) is not None:
+            m_dates[data.month] = data.monthDate
+        update_data["monthlyFeeDates"] = m_dates
+    elif data.month and getattr(data, "monthDate", None) is not None:
         update_data[f"monthlyFeeDates.{data.month}"] = data.monthDate
 
     if not update_data:
