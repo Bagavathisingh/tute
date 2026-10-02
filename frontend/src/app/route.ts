@@ -10,11 +10,9 @@ export async function GET() {
   try {
     let html = fs.readFileSync(filePath, 'utf8');
 
-    // Only inject API_BASE for local development (localhost URLs).
-    // For production, let app.js use relative "/api" so Next.js rewrites proxy
-    // the request server-side, avoiding CORS issues entirely.
+    // If NEXT_PUBLIC_API_URL is configured, inject it into the page window
     const rawApiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (rawApiUrl && rawApiUrl.includes('localhost')) {
+    if (rawApiUrl) {
       const cleanUrl = rawApiUrl.replace(/\/$/, '');
       const apiBase = cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
       html = html.replace('<head>', `<head><script>window.API_BASE = "${apiBase}";</script>`);
