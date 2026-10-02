@@ -1400,3 +1400,86 @@ tr:hover td {
     color: var(--text-main);
     word-break: break-word;
 }
+
+/* ==========================================================================
+   Skeleton Loading Animation & Placeholders
+   ========================================================================== */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(226, 232, 240, 0.6) 25%,
+        rgba(241, 245, 249, 0.95) 37%,
+        rgba(226, 232, 240, 0.6) 63%
+    );
+    background-size: 400% 100%;
+    animation: skeleton-shimmer 1.4s ease infinite;
+    border-radius: var(--radius-sm);
+    display: inline-block;
+    vertical-align: middle;
+}
+
+html.dark-mode .skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(30, 41, 59, 0.6) 25%,
+        rgba(51, 65, 85, 0.9) 37%,
+        rgba(30, 41, 59, 0.6) 63%
+    );
+    background-size: 400% 100%;
+}
+
+@keyframes skeleton-shimmer {
+    0% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.skeleton-text {
+    height: 14px;
+    width: 80%;
+    margin: 4px 0;
+}
+
+.skeleton-cell {
+    height: 18px;
+    width: 70%;
+    border-radius: 4px;
+}
+
+.skeleton-badge {
+    height: 22px;
+    width: 65px;
+    border-radius: 9999px;
+}
+
+.skeleton-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+}
+
+.skeleton-card {
+    height: 100px;
+    width: 100%;
+    border-radius: var(--radius-md);
+}
+
+.skeleton-row td {
+    padding: 1.1rem 0.8rem !important;
+    vertical-align: middle;
+}
+
+/* Button Loading State */
+.btn:disabled {
+    opacity: 0.72;
+    cursor: not-allowed;
+}
+
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.85;
+}

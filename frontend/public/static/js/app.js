@@ -72,9 +72,58 @@ async function apiRequest(endpoint, options = {}) {
     }
 }
 
+// ------------------ Skeleton Loading Helpers ------------------
+function renderTableSkeleton(tbody, rowCount = 5, colCount = 6) {
+    if (!tbody) return;
+    const widths = ['55%', '85%', '65%', '45%', '75%', '60%', '70%', '50%'];
+    let html = '';
+    for (let r = 0; r < rowCount; r++) {
+        html += '<tr class="skeleton-row">';
+        for (let c = 0; c < colCount; c++) {
+            const w = widths[(r + c) % widths.length];
+            html += `<td><div class="skeleton skeleton-cell" style="width: ${w};"></div></td>`;
+        }
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function renderStudentPortalSkeleton() {
+    const welcomeElem = document.getElementById("stud-welcome-name");
+    if (welcomeElem) welcomeElem.innerHTML = '<span class="skeleton" style="width: 140px; height: 24px;"></span>';
+
+    const attCard = document.getElementById("stud-card-attendance");
+    if (attCard) attCard.innerHTML = '<span class="skeleton" style="width: 55px; height: 26px;"></span>';
+
+    const avgCard = document.getElementById("stud-card-average");
+    if (avgCard) avgCard.innerHTML = '<span class="skeleton" style="width: 55px; height: 26px;"></span>';
+
+    const rankCard = document.getElementById("stud-card-rank");
+    if (rankCard) rankCard.innerHTML = '<span class="skeleton" style="width: 55px; height: 26px;"></span>';
+
+    const progressBars = document.getElementById("student-subject-progress-bars");
+    if (progressBars) {
+        progressBars.innerHTML = `
+            <div style="margin-bottom: 1.2rem;"><div class="skeleton" style="width: 32%; height: 14px; margin-bottom: 6px;"></div><div class="skeleton" style="width: 100%; height: 12px;"></div></div>
+            <div style="margin-bottom: 1.2rem;"><div class="skeleton" style="width: 28%; height: 14px; margin-bottom: 6px;"></div><div class="skeleton" style="width: 100%; height: 12px;"></div></div>
+            <div style="margin-bottom: 1.2rem;"><div class="skeleton" style="width: 35%; height: 14px; margin-bottom: 6px;"></div><div class="skeleton" style="width: 100%; height: 12px;"></div></div>
+            <div style="margin-bottom: 1.2rem;"><div class="skeleton" style="width: 25%; height: 14px; margin-bottom: 6px;"></div><div class="skeleton" style="width: 100%; height: 12px;"></div></div>
+        `;
+    }
+}
+
 // ------------------ Data Initialization from MongoDB ------------------
 async function initStore() {
     try {
+        // Render initial skeleton loaders in tables while fetching from MongoDB
+        const studentsTbody = document.getElementById("students-table")?.querySelector("tbody");
+        if (studentsTbody && (!AppStore.students || AppStore.students.length === 0)) {
+            renderTableSkeleton(studentsTbody, 6, 7);
+        }
+        const feesTbody = document.getElementById("fees-table")?.querySelector("tbody");
+        if (feesTbody && (!AppStore.students || AppStore.students.length === 0)) {
+            renderTableSkeleton(feesTbody, 6, 7);
+        }
         // 1. Fetch Standards from MongoDB
         try {
             StandardsList = await apiRequest('/standards');
@@ -278,6 +327,14 @@ async function handleStaffLogin(event) {
     const user = document.getElementById("staff-user").value.trim();
     const pass = document.getElementById("staff-pass").value.trim();
     const err = document.getElementById("staff-error");
+    const submitBtn = document.getElementById("staff-login-btn") || event.target.querySelector('button[type="submit"]');
+    const origHTML = submitBtn ? submitBtn.innerHTML : '';
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add("btn-loading");
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+    }
 
     try {
         const response = await apiRequest('/auth/staff-login', {
@@ -287,6 +344,9 @@ async function handleStaffLogin(event) {
 
         if (response.success) {
             err.style.display = "none";
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> Redirecting...';
+            }
             Session.currentUserType = "staff";
             Session.userRole = response.role || (response.userType === 'admin' ? 'admin' : 'staff');
             Session.currentStudentRoll = null;
@@ -296,12 +356,21 @@ async function handleStaffLogin(event) {
 
             document.getElementById("staff-user").value = "";
             document.getElementById("staff-pass").value = "";
-            await refreshStudentsFromAPI();
+
             showPage("staff-dashboard");
+            renderTableSkeleton(document.getElementById("students-table")?.querySelector("tbody"), 6, 7);
+            await refreshStudentsFromAPI();
+            renderStudentsTable();
         }
     } catch (e) {
         err.style.display = "flex";
         err.innerHTML = `<i class="fas fa-circle-exclamation"></i> ${e.message || "Invalid credentials."}`;
+    } finally {
+        if (submitBtn && Session.currentUserType !== "staff") {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove("btn-loading");
+            submitBtn.innerHTML = origHTML;
+        }
     }
 }
 
@@ -310,6 +379,14 @@ async function handleStudentLogin(event) {
     const roll = document.getElementById("student-roll").value.trim();
     const pass = document.getElementById("student-pass").value.trim();
     const err = document.getElementById("student-error");
+    const submitBtn = document.getElementById("student-login-btn") || event.target.querySelector('button[type="submit"]');
+    const origHTML = submitBtn ? submitBtn.innerHTML : '';
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add("btn-loading");
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+    }
 
     try {
         const response = await apiRequest('/auth/student-login', {
@@ -319,21 +396,33 @@ async function handleStudentLogin(event) {
 
         if (response.success) {
             err.style.display = "none";
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> Redirecting...';
+            }
             Session.currentUserType = "student";
             Session.userRole = "student";
             Session.currentStudentRoll = roll;
             sessionStorage.setItem("currentUserType", "student");
-            sessionStorage.setItem("userRole", "student");         // persist role
+            sessionStorage.setItem("userRole", "student");
             sessionStorage.setItem("currentStudentRoll", roll);
 
             document.getElementById("student-roll").value = "";
             document.getElementById("student-pass").value = "";
-            await refreshStudentsFromAPI();
+
             showPage("student-dashboard");
+            renderStudentPortalSkeleton();
+            await refreshStudentsFromAPI();
+            loadStudentPortal();
         }
     } catch (e) {
         err.style.display = "flex";
         err.innerHTML = `<i class="fas fa-circle-exclamation"></i> ${e.message || "Roll number not found."}`;
+    } finally {
+        if (submitBtn && Session.currentUserType !== "student") {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove("btn-loading");
+            submitBtn.innerHTML = origHTML;
+        }
     }
 }
 
@@ -2366,6 +2455,7 @@ async function loadStudentPortal() {
 
     let student = AppStore.students.find(s => s.rollNumber === roll);
     if (!student) {
+        renderStudentPortalSkeleton();
         try {
             student = await apiRequest(`/students/${encodeURIComponent(roll)}`);
         } catch (e) {
